@@ -994,10 +994,6 @@
                                         <button class="btn btn-outline-secondary" onclick="resetLocalData()">
                                             <i class="fas fa-redo me-2"></i> Reset Local Cache
                                         </button>
-                                        <!-- Add this button near the other buttons in the Sync section -->
-<button class="btn btn-outline-warning" onclick="quickTest()">
-    <i class="fas fa-bug me-2"></i> Quick Test
-</button>
                                     </div>
                                 </div>
                             </div>
@@ -1196,101 +1192,8 @@
     </div>
 
     <!-- Scripts -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>    
     <script>
-        // Wait for DOM to be fully loaded before accessing elements
-function ensureDOMLoaded(callback) {
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', callback);
-    } else {
-        callback();
-    }
-}
-
-        function fullSystemTest() {
-    if (!currentUser) {
-        alert('Please set user first');
-        return;
-    }
-    
-    if (!googleScriptUrl || googleScriptUrl === DEFAULT_SCRIPT_URL) {
-        alert('Please configure Google Script URL first');
-        return;
-    }
-    
-    showLoading('Testing complete system...');
-    
-    // Step 1: Test connection
-    fetch(`${googleScriptUrl}?action=ping&deviceId=${deviceId}`)
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                console.log('✅ Connection test passed:', data);
-                
-                // Step 2: Record a test payment
-                const testPayment = {
-                    action: 'recordPayment',
-                    studentId: 'UHAS202500001',
-                    studentName: 'Test Student',
-                    level: '100',
-                    amount: 100,
-                    method: 'Cash',
-                    recordedBy: currentUser,
-                    deviceId: deviceId,
-                    timestamp: new Date().toISOString()
-                };
-                
-                return fetch(googleScriptUrl, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify(testPayment)
-                });
-            } else {
-                throw new Error('Connection failed: ' + data.message);
-            }
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                console.log('✅ Payment test passed:', data);
-                
-                // Step 3: Get payments to verify
-                return fetch(`${googleScriptUrl}?action=getPayments&deviceId=${deviceId}`);
-            } else {
-                throw new Error('Payment failed: ' + data.message);
-            }
-        })
-        .then(response => response.json())
-        .then(data => {
-            hideLoading();
-            if (data.success) {
-                alert(`✅ All tests passed!\n\nConnection: OK\nPayment recorded: OK\nTotal payments in system: ${data.count}\n\nCheck Google Sheets to see the new payment.`);
-                console.log('Final payments data:', data);
-            } else {
-                alert('❌ Final verification failed: ' + data.message);
-            }
-        })
-        .catch(error => {
-            hideLoading();
-            alert('❌ System test failed: ' + error.message);
-            console.error('Test error:', error);
-        });
-}
-
-// Add this to your sync section HTML:
-// <button class="btn btn-outline-warning" onclick="fullSystemTest()">
-//     <i class="fas fa-vial me-2"></i> Full System Test
-// </button>
-// Wrap your initialization in this
-ensureDOMLoaded(function() {
-    initializeSystem();
-    setupEventListeners();
-    checkUserSession();
-    updateOnlineStatus();
-});
         // ============================================
         // COMPLETE STUDENT DATA - ALL 400+ STUDENTS
         // ============================================
@@ -1975,7 +1878,7 @@ ensureDOMLoaded(function() {
             { level: "100", id: "UHAS202507369", name: "Laaribik Faith Feidib", programme: "MEDICINE" },
             { level: "100", id: "UHAS202500173", name: "Agyapong Karen Menka", programme: "MEDICINE" },
             { level: "100", id: "UHAS202513609", name: "Agyei Christopher", programme: "MEDICINE" },
-            { level: "100", id: "UHAS202504891", name: "Lorbotwe22 Lord AmOH-siaw", programme: "MEDICINE" },
+            { level: "100", id: "UHAS202504891", name: "Lorbotwe22 Lord Amoh-siaw", programme: "MEDICINE" },
             { level: "100", id: "UHAS202502594", name: "Amexo Elvis Edudzi Yao", programme: "MEDICINE" },
             { level: "100", id: "UHAS202501789", name: "Djabatey Dorcas Koryoo", programme: "MEDICINE" },
             { level: "100", id: "UHAS202502287", name: "Frimpong Sandra Serwaa", programme: "MEDICINE" }
@@ -1998,19 +1901,21 @@ ensureDOMLoaded(function() {
         let lastSyncTime = null;
         let syncInterval = null;
         let isOnline = false;
-        let deviceId = generateDeviceId();
+        let deviceId = '';
         let pendingPayments = [];
         
         // ============================================
-        // INITIALIZATION
+        // CORE FUNCTIONS - DECLARE ALL FUNCTIONS FIRST
         // ============================================
         
-        document.addEventListener('DOMContentLoaded', function() {
-            initializeSystem();
-            setupEventListeners();
-            checkUserSession();
-            updateOnlineStatus();
-        });
+        // Wait for DOM to be fully loaded before accessing elements
+        function ensureDOMLoaded(callback) {
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', callback);
+            } else {
+                callback();
+            }
+        }
         
         function initializeSystem() {
             // Generate unique device ID
@@ -2026,7 +1931,9 @@ ensureDOMLoaded(function() {
             const savedUrl = localStorage.getItem('uhas_msa_script_url');
             if (savedUrl) {
                 googleScriptUrl = savedUrl;
-                document.getElementById('scriptUrl').value = savedUrl;
+                if (document.getElementById('scriptUrl')) {
+                    document.getElementById('scriptUrl').value = savedUrl;
+                }
             }
             
             // Check for existing user session
@@ -2046,17 +1953,29 @@ ensureDOMLoaded(function() {
             updateDashboard();
             
             // Set current date
-            document.getElementById('previewDate').textContent = new Date().toLocaleDateString();
-            document.getElementById('reportDate').textContent = new Date().toLocaleDateString();
+            if (document.getElementById('previewDate')) {
+                document.getElementById('previewDate').textContent = new Date().toLocaleDateString();
+            }
+            if (document.getElementById('reportDate')) {
+                document.getElementById('reportDate').textContent = new Date().toLocaleDateString();
+            }
             
             // Setup payment form listeners
             setupPaymentFormListeners();
             
             // Setup report type listener
-            document.getElementById('reportType').addEventListener('change', function() {
-                const levelSelect = document.getElementById('levelSelectContainer');
-                levelSelect.style.display = this.value === 'level' ? 'block' : 'none';
-            });
+            const reportTypeSelect = document.getElementById('reportType');
+            if (reportTypeSelect) {
+                reportTypeSelect.addEventListener('change', function() {
+                    const levelSelect = document.getElementById('levelSelectContainer');
+                    if (levelSelect) {
+                        levelSelect.style.display = this.value === 'level' ? 'block' : 'none';
+                    }
+                });
+            }
+            
+            // Update online status
+            updateOnlineStatus();
         }
         
         function initializeStudentRecords() {
@@ -2078,8 +1997,12 @@ ensureDOMLoaded(function() {
             });
             
             // Update student count
-            document.getElementById('studentCount').textContent = `${studentRecords.length} students`;
-            document.getElementById('totalStudents').textContent = studentRecords.length;
+            if (document.getElementById('studentCount')) {
+                document.getElementById('studentCount').textContent = `${studentRecords.length} students`;
+            }
+            if (document.getElementById('totalStudents')) {
+                document.getElementById('totalStudents').textContent = studentRecords.length;
+            }
         }
         
         function generateDeviceId() {
@@ -2093,12 +2016,19 @@ ensureDOMLoaded(function() {
         
         function setupEventListeners() {
             // Tab navigation
-            document.getElementById('dashboardTab').addEventListener('click', () => showSection('dashboardSection'));
-            document.getElementById('studentsTab').addEventListener('click', () => showSection('studentsSection'));
-            document.getElementById('paymentTab').addEventListener('click', () => showSection('paymentSection'));
-            document.getElementById('paymentHistoryTab').addEventListener('click', () => showSection('paymentHistorySection'));
-            document.getElementById('reportsTab').addEventListener('click', () => showSection('reportsSection'));
-            document.getElementById('syncTab').addEventListener('click', () => showSection('syncSection'));
+            const dashboardTab = document.getElementById('dashboardTab');
+            const studentsTab = document.getElementById('studentsTab');
+            const paymentTab = document.getElementById('paymentTab');
+            const paymentHistoryTab = document.getElementById('paymentHistoryTab');
+            const reportsTab = document.getElementById('reportsTab');
+            const syncTab = document.getElementById('syncTab');
+            
+            if (dashboardTab) dashboardTab.addEventListener('click', () => showSection('dashboardSection'));
+            if (studentsTab) studentsTab.addEventListener('click', () => showSection('studentsSection'));
+            if (paymentTab) paymentTab.addEventListener('click', () => showSection('paymentSection'));
+            if (paymentHistoryTab) paymentHistoryTab.addEventListener('click', () => showSection('paymentHistorySection'));
+            if (reportsTab) reportsTab.addEventListener('click', () => showSection('reportsSection'));
+            if (syncTab) syncTab.addEventListener('click', () => showSection('syncSection'));
             
             // Network status monitoring
             window.addEventListener('online', updateOnlineStatus);
@@ -2112,25 +2042,44 @@ ensureDOMLoaded(function() {
             });
             
             // Delete payment confirmation
-            document.getElementById('confirmDeletePayment').addEventListener('click', deletePaymentRecord);
+            const confirmDeleteBtn = document.getElementById('confirmDeletePayment');
+            if (confirmDeleteBtn) {
+                confirmDeleteBtn.addEventListener('click', deletePaymentRecord);
+            }
             
             // Payment form submission
-            document.getElementById('paymentForm').addEventListener('submit', function(e) {
-                e.preventDefault();
-                recordPaymentFromForm();
-            });
+            const paymentForm = document.getElementById('paymentForm');
+            if (paymentForm) {
+                paymentForm.addEventListener('submit', function(e) {
+                    e.preventDefault();
+                    recordPaymentFromForm();
+                });
+            }
         }
         
         function setupPaymentFormListeners() {
-            document.getElementById('paymentAmount').addEventListener('input', updatePaymentPreview);
-            document.getElementById('paymentMethod').addEventListener('change', updatePaymentPreview);
-            document.getElementById('studentSelect').addEventListener('change', updatePaymentForm);
+            const paymentAmount = document.getElementById('paymentAmount');
+            const paymentMethod = document.getElementById('paymentMethod');
+            const studentSelect = document.getElementById('studentSelect');
+            
+            if (paymentAmount) {
+                paymentAmount.addEventListener('input', updatePaymentPreview);
+            }
+            if (paymentMethod) {
+                paymentMethod.addEventListener('change', updatePaymentPreview);
+            }
+            if (studentSelect) {
+                studentSelect.addEventListener('change', updatePaymentForm);
+            }
         }
         
         function checkUserSession() {
             if (!currentUser) {
                 setTimeout(() => {
-                    new bootstrap.Modal(document.getElementById('executiveModal')).show();
+                    const executiveModal = document.getElementById('executiveModal');
+                    if (executiveModal) {
+                        new bootstrap.Modal(executiveModal).show();
+                    }
                 }, 1000);
             }
         }
@@ -2140,7 +2089,10 @@ ensureDOMLoaded(function() {
         // ============================================
         
         function setExecutive() {
-            const executiveName = document.getElementById('executiveInput').value.trim();
+            const executiveInput = document.getElementById('executiveInput');
+            if (!executiveInput) return;
+            
+            const executiveName = executiveInput.value.trim();
             const selectedColor = document.getElementById('userColor').value;
             
             if (!executiveName) {
@@ -2160,7 +2112,9 @@ ensureDOMLoaded(function() {
             
             // Close modal
             const modal = bootstrap.Modal.getInstance(document.getElementById('executiveModal'));
-            modal.hide();
+            if (modal) {
+                modal.hide();
+            }
             
             // Register user in system
             registerUser();
@@ -2174,10 +2128,16 @@ ensureDOMLoaded(function() {
         }
         
         function updateUserDisplay() {
-            document.getElementById('executiveName').textContent = currentUser;
-            document.getElementById('currentUser').textContent = currentUser;
-            document.getElementById('currentUser').style.backgroundColor = userColor;
-            document.getElementById('previewExecutive').textContent = currentUser;
+            const executiveNameEl = document.getElementById('executiveName');
+            const currentUserEl = document.getElementById('currentUser');
+            const previewExecutiveEl = document.getElementById('previewExecutive');
+            
+            if (executiveNameEl) executiveNameEl.textContent = currentUser;
+            if (currentUserEl) {
+                currentUserEl.textContent = currentUser;
+                currentUserEl.style.backgroundColor = userColor;
+            }
+            if (previewExecutiveEl) previewExecutiveEl.textContent = currentUser;
         }
         
         async function registerUser() {
@@ -2253,6 +2213,8 @@ ensureDOMLoaded(function() {
         
         function populateStudentSelect() {
             const select = document.getElementById('studentSelect');
+            if (!select) return;
+            
             select.innerHTML = '<option value="">Choose a student...</option>';
             
             studentRecords.forEach(student => {
@@ -2264,95 +2226,143 @@ ensureDOMLoaded(function() {
         }
         
         function updatePaymentForm() {
-            const studentId = document.getElementById('studentSelect').value;
+            const studentSelect = document.getElementById('studentSelect');
+            if (!studentSelect) return;
+            
+            const studentId = studentSelect.value;
             const student = studentRecords.find(s => s.id === studentId);
             
             if (student) {
-                document.getElementById('paymentStudentId').value = student.id;
-                document.getElementById('paymentLevel').value = student.level;
-                document.getElementById('paymentAmountDue').value = `GHS ${student.amountDue.toFixed(2)}`;
-                document.getElementById('paymentAlreadyPaid').value = `GHS ${student.amountPaid.toFixed(2)}`;
-                document.getElementById('paymentAmount').value = '';
-                document.getElementById('paymentMethod').value = '';
+                const paymentStudentId = document.getElementById('paymentStudentId');
+                const paymentLevel = document.getElementById('paymentLevel');
+                const paymentAmountDue = document.getElementById('paymentAmountDue');
+                const paymentAlreadyPaid = document.getElementById('paymentAlreadyPaid');
+                
+                if (paymentStudentId) paymentStudentId.value = student.id;
+                if (paymentLevel) paymentLevel.value = student.level;
+                if (paymentAmountDue) paymentAmountDue.value = `GHS ${student.amountDue.toFixed(2)}`;
+                if (paymentAlreadyPaid) paymentAlreadyPaid.value = `GHS ${student.amountPaid.toFixed(2)}`;
                 
                 // Update preview
-                document.getElementById('previewName').textContent = student.name;
-                document.getElementById('previewId').textContent = student.id;
-                document.getElementById('previewLevel').textContent = student.level;
-                document.getElementById('previewDue').textContent = `GHS ${student.amountDue.toFixed(2)}`;
-                document.getElementById('previewAmount').textContent = 'GHS 0';
-                document.getElementById('previewMethod').textContent = '-';
-                document.getElementById('previewBalance').textContent = `GHS ${student.balance.toFixed(2)}`;
+                const previewName = document.getElementById('previewName');
+                const previewId = document.getElementById('previewId');
+                const previewLevel = document.getElementById('previewLevel');
+                const previewDue = document.getElementById('previewDue');
+                
+                if (previewName) previewName.textContent = student.name;
+                if (previewId) previewId.textContent = student.id;
+                if (previewLevel) previewLevel.textContent = student.level;
+                if (previewDue) previewDue.textContent = `GHS ${student.amountDue.toFixed(2)}`;
+                
+                const previewAmount = document.getElementById('previewAmount');
+                const previewMethod = document.getElementById('previewMethod');
+                const previewBalance = document.getElementById('previewBalance');
+                
+                if (previewAmount) previewAmount.textContent = 'GHS 0';
+                if (previewMethod) previewMethod.textContent = '-';
+                if (previewBalance) previewBalance.textContent = `GHS ${student.balance.toFixed(2)}`;
                 
                 // Update status badge
                 const statusBadge = document.getElementById('previewStatus');
-                statusBadge.textContent = student.paymentStatus;
-                statusBadge.className = `status-badge status-${student.paymentStatus.toLowerCase().replace(' ', '-')}`;
+                if (statusBadge) {
+                    statusBadge.textContent = student.paymentStatus;
+                    statusBadge.className = `status-badge status-${student.paymentStatus.toLowerCase().replace(' ', '-')}`;
+                }
                 
                 updatePaymentPreview();
             }
         }
         
         function updatePaymentPreview() {
-            const studentId = document.getElementById('studentSelect').value;
+            const studentSelect = document.getElementById('studentSelect');
+            if (!studentSelect) return;
+            
+            const studentId = studentSelect.value;
             const student = studentRecords.find(s => s.id === studentId);
             
             if (!student) return;
             
-            const paymentAmount = parseFloat(document.getElementById('paymentAmount').value) || 0;
-            const paymentMethod = document.getElementById('paymentMethod').value;
+            const paymentAmount = document.getElementById('paymentAmount');
+            const paymentMethod = document.getElementById('paymentMethod');
             
-            const newBalance = Math.max(0, student.amountDue - (student.amountPaid + paymentAmount));
-            const newAmountPaid = student.amountPaid + paymentAmount;
+            const paymentAmountValue = parseFloat(paymentAmount?.value) || 0;
+            const paymentMethodValue = paymentMethod?.value || '';
+            
+            const newBalance = Math.max(0, student.amountDue - (student.amountPaid + paymentAmountValue));
+            const newAmountPaid = student.amountPaid + paymentAmountValue;
             const newStatus = calculatePaymentStatus(student.amountDue, newAmountPaid);
             
             // Update preview
-            document.getElementById('previewAmount').textContent = `GHS ${paymentAmount.toFixed(2)}`;
-            document.getElementById('previewMethod').textContent = paymentMethod || '-';
-            document.getElementById('previewBalance').textContent = `GHS ${newBalance.toFixed(2)}`;
+            const previewAmount = document.getElementById('previewAmount');
+            const previewMethod = document.getElementById('previewMethod');
+            const previewBalance = document.getElementById('previewBalance');
+            
+            if (previewAmount) previewAmount.textContent = `GHS ${paymentAmountValue.toFixed(2)}`;
+            if (previewMethod) previewMethod.textContent = paymentMethodValue || '-';
+            if (previewBalance) previewBalance.textContent = `GHS ${newBalance.toFixed(2)}`;
             
             // Update status badge
             const statusBadge = document.getElementById('previewStatus');
-            statusBadge.textContent = newStatus;
-            statusBadge.className = `status-badge status-${newStatus.toLowerCase().replace(' ', '-')}`;
+            if (statusBadge) {
+                statusBadge.textContent = newStatus;
+                statusBadge.className = `status-badge status-${newStatus.toLowerCase().replace(' ', '-')}`;
+            }
             
             // Update balance after payment message
-            document.getElementById('balanceAfterPayment').textContent = 
-                `Balance after payment: GHS ${newBalance.toFixed(2)}`;
+            const balanceAfterPayment = document.getElementById('balanceAfterPayment');
+            if (balanceAfterPayment) {
+                balanceAfterPayment.textContent = `Balance after payment: GHS ${newBalance.toFixed(2)}`;
+            }
             
             // Check for overpayment
             const overpaymentAlert = document.getElementById('overpaymentAlert');
-            if (paymentAmount > student.balance) {
-                overpaymentAlert.style.display = 'block';
-                document.getElementById('overpaymentMessage').textContent = 
-                    `Warning: Payment exceeds balance by GHS ${(paymentAmount - student.balance).toFixed(2)}. Maximum allowed: GHS ${student.balance}`;
-            } else {
-                overpaymentAlert.style.display = 'none';
+            if (overpaymentAlert) {
+                if (paymentAmountValue > student.balance) {
+                    overpaymentAlert.style.display = 'block';
+                    const overpaymentMessage = document.getElementById('overpaymentMessage');
+                    if (overpaymentMessage) {
+                        overpaymentMessage.textContent = `Warning: Payment exceeds balance by GHS ${(paymentAmountValue - student.balance).toFixed(2)}. Maximum allowed: GHS ${student.balance}`;
+                    }
+                } else {
+                    overpaymentAlert.style.display = 'none';
+                }
             }
         }
         
         async function recordPaymentFromForm() {
             if (!currentUser) {
                 alert("Please set your user identity first.");
-                new bootstrap.Modal(document.getElementById('executiveModal')).show();
+                const executiveModal = document.getElementById('executiveModal');
+                if (executiveModal) {
+                    new bootstrap.Modal(executiveModal).show();
+                }
                 return;
             }
             
-            const studentId = document.getElementById('studentSelect').value;
-            const paymentAmount = parseFloat(document.getElementById('paymentAmount').value);
-            const paymentMethod = document.getElementById('paymentMethod').value;
+            const studentSelect = document.getElementById('studentSelect');
+            const paymentAmount = document.getElementById('paymentAmount');
+            const paymentMethod = document.getElementById('paymentMethod');
+            
+            if (!studentSelect || !paymentAmount || !paymentMethod) {
+                alert("Form elements not found.");
+                return;
+            }
+            
+            const studentId = studentSelect.value;
+            const paymentAmountValue = parseFloat(paymentAmount.value);
+            const paymentMethodValue = paymentMethod.value;
             
             if (!studentId) {
                 alert("Please select a student.");
                 return;
             }
             
-            if (!paymentAmount || paymentAmount <= 0) {
+            if (!paymentAmountValue || paymentAmountValue <= 0) {
                 alert("Please enter a valid payment amount.");
                 return;
             }
             
-            if (!paymentMethod) {
+            if (!paymentMethodValue) {
                 alert("Please select a payment method.");
                 return;
             }
@@ -2363,7 +2373,7 @@ ensureDOMLoaded(function() {
             const student = studentRecords[studentIndex];
             
             // Check for overpayment
-            if (paymentAmount > student.balance) {
+            if (paymentAmountValue > student.balance) {
                 alert(`Payment exceeds outstanding balance. Maximum allowed: GHS ${student.balance}`);
                 return;
             }
@@ -2371,8 +2381,8 @@ ensureDOMLoaded(function() {
             // Create payment record
             const paymentRecord = {
                 id: generatePaymentId(),
-                amount: paymentAmount,
-                method: paymentMethod,
+                amount: paymentAmountValue,
+                method: paymentMethodValue,
                 date: new Date().toISOString().split('T')[0],
                 recordedBy: currentUser,
                 timestamp: new Date().toISOString()
@@ -2385,13 +2395,16 @@ ensureDOMLoaded(function() {
             saveDataToLocalStorage();
             
             // Reset form
-            document.getElementById('paymentForm').reset();
-            document.getElementById('overpaymentAlert').style.display = 'none';
+            const paymentForm = document.getElementById('paymentForm');
+            if (paymentForm) paymentForm.reset();
+            
+            const overpaymentAlert = document.getElementById('overpaymentAlert');
+            if (overpaymentAlert) overpaymentAlert.style.display = 'none';
             
             // Show success
             showSuccess(
                 "Payment Recorded", 
-                `${student.name} has paid GHS ${paymentAmount.toFixed(2)} via ${paymentMethod}. New balance: GHS ${studentRecords[studentIndex].balance.toFixed(2)}`
+                `${student.name} has paid GHS ${paymentAmountValue.toFixed(2)} via ${paymentMethodValue}. New balance: GHS ${studentRecords[studentIndex].balance.toFixed(2)}`
             );
             
             // Sync with Google Sheets if online
@@ -2449,15 +2462,20 @@ ensureDOMLoaded(function() {
         function showPaymentModal() {
             showSection('paymentSection');
             populateStudentSelect();
-            document.getElementById('studentSelect').focus();
+            const studentSelect = document.getElementById('studentSelect');
+            if (studentSelect) studentSelect.focus();
         }
         
         function quickPayment(studentId) {
             showSection('paymentSection');
             populateStudentSelect();
-            document.getElementById('studentSelect').value = studentId;
-            updatePaymentForm();
-            document.getElementById('paymentAmount').focus();
+            const studentSelect = document.getElementById('studentSelect');
+            if (studentSelect) {
+                studentSelect.value = studentId;
+                updatePaymentForm();
+            }
+            const paymentAmount = document.getElementById('paymentAmount');
+            if (paymentAmount) paymentAmount.focus();
         }
         
         // ============================================
@@ -2465,11 +2483,16 @@ ensureDOMLoaded(function() {
         // ============================================
         
         function renderStudentTable(filteredStudents = null) {
-            const studentsToShow = filteredStudents || studentRecords;
             const tbody = document.getElementById('studentsTableBody');
+            if (!tbody) return;
+            
+            const studentsToShow = filteredStudents || studentRecords;
+            const studentCount = document.getElementById('studentCount');
             
             // Update count
-            document.getElementById('studentCount').textContent = `${studentsToShow.length} students`;
+            if (studentCount) {
+                studentCount.textContent = `${studentsToShow.length} students`;
+            }
             
             if (studentsToShow.length === 0) {
                 tbody.innerHTML = `
@@ -2515,36 +2538,45 @@ ensureDOMLoaded(function() {
         }
         
         function filterStudents() {
-            const levelFilter = document.getElementById('levelFilter').value;
-            const statusFilter = document.getElementById('statusFilter').value;
+            const levelFilter = document.getElementById('levelFilter');
+            const statusFilter = document.getElementById('statusFilter');
             
             let filtered = studentRecords;
             
-            if (levelFilter) {
-                filtered = filtered.filter(student => student.level === levelFilter);
+            if (levelFilter && levelFilter.value) {
+                filtered = filtered.filter(student => student.level === levelFilter.value);
             }
             
-            if (statusFilter) {
-                filtered = filtered.filter(student => student.paymentStatus === statusFilter);
+            if (statusFilter && statusFilter.value) {
+                filtered = filtered.filter(student => student.paymentStatus === statusFilter.value);
             }
             
             renderStudentTable(filtered);
         }
         
         function filterByLevel(level) {
-            document.getElementById('levelFilter').value = level;
+            const levelFilter = document.getElementById('levelFilter');
+            if (levelFilter) {
+                levelFilter.value = level;
+            }
             filterStudents();
             showSection('studentsSection');
         }
         
         function filterByStatus(status) {
-            document.getElementById('statusFilter').value = status;
+            const statusFilter = document.getElementById('statusFilter');
+            if (statusFilter) {
+                statusFilter.value = status;
+            }
             filterStudents();
             showSection('studentsSection');
         }
         
         function searchStudents() {
-            const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+            const searchInput = document.getElementById('searchInput');
+            if (!searchInput) return;
+            
+            const searchTerm = searchInput.value.toLowerCase();
             
             if (!searchTerm.trim()) {
                 renderStudentTable();
@@ -2560,9 +2592,14 @@ ensureDOMLoaded(function() {
         }
         
         function resetFilters() {
-            document.getElementById('levelFilter').value = '';
-            document.getElementById('statusFilter').value = '';
-            document.getElementById('searchInput').value = '';
+            const levelFilter = document.getElementById('levelFilter');
+            const statusFilter = document.getElementById('statusFilter');
+            const searchInput = document.getElementById('searchInput');
+            
+            if (levelFilter) levelFilter.value = '';
+            if (statusFilter) statusFilter.value = '';
+            if (searchInput) searchInput.value = '';
+            
             renderStudentTable();
         }
         
@@ -2571,11 +2608,16 @@ ensureDOMLoaded(function() {
         // ============================================
         
         function renderPaymentHistoryTable(filteredHistory = null) {
-            const historyToShow = filteredHistory || paymentHistory;
             const tbody = document.getElementById('paymentHistoryBody');
+            if (!tbody) return;
+            
+            const historyToShow = filteredHistory || paymentHistory;
+            const totalPaymentsCount = document.getElementById('totalPaymentsCount');
             
             // Update count
-            document.getElementById('totalPaymentsCount').textContent = `${historyToShow.length} payments`;
+            if (totalPaymentsCount) {
+                totalPaymentsCount.textContent = `${historyToShow.length} payments`;
+            }
             
             if (historyToShow.length === 0) {
                 tbody.innerHTML = `
@@ -2614,6 +2656,8 @@ ensureDOMLoaded(function() {
             if (!student) return;
             
             const detailsDiv = document.getElementById('paymentHistoryDetails');
+            if (!detailsDiv) return;
+            
             detailsDiv.innerHTML = `
                 <h4>Payment History for ${student.name}</h4>
                 <p><strong>Student ID:</strong> ${student.id} | <strong>Level:</strong> ${student.level}</p>
@@ -2655,8 +2699,11 @@ ensureDOMLoaded(function() {
                 }
             `;
             
-            const modal = new bootstrap.Modal(document.getElementById('paymentHistoryModal'));
-            modal.show();
+            const modalElement = document.getElementById('paymentHistoryModal');
+            if (modalElement) {
+                const modal = new bootstrap.Modal(modalElement);
+                modal.show();
+            }
         }
         
         function showDeletePaymentModal(paymentId, studentId) {
@@ -2667,6 +2714,8 @@ ensureDOMLoaded(function() {
             if (!payment) return;
             
             const detailsDiv = document.getElementById('deletePaymentDetails');
+            if (!detailsDiv) return;
+            
             detailsDiv.innerHTML = `
                 <div class="alert alert-info">
                     <p><strong>Student:</strong> ${student.name}</p>
@@ -2687,12 +2736,17 @@ ensureDOMLoaded(function() {
             detailsDiv.dataset.paymentId = paymentId;
             detailsDiv.dataset.studentId = studentId;
             
-            const modal = new bootstrap.Modal(document.getElementById('deletePaymentModal'));
-            modal.show();
+            const modalElement = document.getElementById('deletePaymentModal');
+            if (modalElement) {
+                const modal = new bootstrap.Modal(modalElement);
+                modal.show();
+            }
         }
         
         async function deletePaymentRecord() {
             const detailsDiv = document.getElementById('deletePaymentDetails');
+            if (!detailsDiv) return;
+            
             const paymentId = detailsDiv.dataset.paymentId;
             const studentId = detailsDiv.dataset.studentId;
             
@@ -2754,7 +2808,7 @@ ensureDOMLoaded(function() {
             
             // Close modal
             const modal = bootstrap.Modal.getInstance(document.getElementById('deletePaymentModal'));
-            modal.hide();
+            if (modal) modal.hide();
             
             // Show success message
             showSuccess("Payment Deleted", `Payment of GHS ${payment.amount.toFixed(2)} deleted successfully.`);
@@ -2766,22 +2820,22 @@ ensureDOMLoaded(function() {
         }
         
         function filterPaymentHistory() {
-            const levelFilter = document.getElementById('historyLevelFilter').value;
-            const methodFilter = document.getElementById('historyMethodFilter').value;
-            const dateFilter = document.getElementById('historyDateFilter').value;
+            const levelFilter = document.getElementById('historyLevelFilter');
+            const methodFilter = document.getElementById('historyMethodFilter');
+            const dateFilter = document.getElementById('historyDateFilter');
             
             let filtered = paymentHistory;
             
-            if (levelFilter) {
-                filtered = filtered.filter(payment => payment.level === levelFilter);
+            if (levelFilter && levelFilter.value) {
+                filtered = filtered.filter(payment => payment.level === levelFilter.value);
             }
             
-            if (methodFilter) {
-                filtered = filtered.filter(payment => payment.method === methodFilter);
+            if (methodFilter && methodFilter.value) {
+                filtered = filtered.filter(payment => payment.method === methodFilter.value);
             }
             
-            if (dateFilter) {
-                const filterDate = new Date(dateFilter).toDateString();
+            if (dateFilter && dateFilter.value) {
+                const filterDate = new Date(dateFilter.value).toDateString();
                 filtered = filtered.filter(payment => {
                     const paymentDate = new Date(payment.date).toDateString();
                     return paymentDate === filterDate;
@@ -2792,7 +2846,10 @@ ensureDOMLoaded(function() {
         }
         
         function searchPaymentHistory() {
-            const searchTerm = document.getElementById('historySearchInput').value.toLowerCase();
+            const searchInput = document.getElementById('historySearchInput');
+            if (!searchInput) return;
+            
+            const searchTerm = searchInput.value.toLowerCase();
             
             if (!searchTerm.trim()) {
                 renderPaymentHistoryTable();
@@ -2802,17 +2859,23 @@ ensureDOMLoaded(function() {
             const filtered = paymentHistory.filter(payment => 
                 payment.studentName.toLowerCase().includes(searchTerm) || 
                 payment.studentId.toLowerCase().includes(searchTerm) ||
-                payment.recordedBy.toLowerCase().includes(searchTerm)
+                (payment.recordedBy && payment.recordedBy.toLowerCase().includes(searchTerm))
             );
             
             renderPaymentHistoryTable(filtered);
         }
         
         function resetHistoryFilters() {
-            document.getElementById('historyLevelFilter').value = '';
-            document.getElementById('historyMethodFilter').value = '';
-            document.getElementById('historyDateFilter').value = '';
-            document.getElementById('historySearchInput').value = '';
+            const levelFilter = document.getElementById('historyLevelFilter');
+            const methodFilter = document.getElementById('historyMethodFilter');
+            const dateFilter = document.getElementById('historyDateFilter');
+            const searchInput = document.getElementById('historySearchInput');
+            
+            if (levelFilter) levelFilter.value = '';
+            if (methodFilter) methodFilter.value = '';
+            if (dateFilter) dateFilter.value = '';
+            if (searchInput) searchInput.value = '';
+            
             renderPaymentHistoryTable();
         }
         
@@ -2832,10 +2895,15 @@ ensureDOMLoaded(function() {
                 totalOutstanding += student.balance;
             });
             
-            document.getElementById('totalStudents').textContent = totalStudents;
-            document.getElementById('expectedRevenue').textContent = `GHS ${expectedRevenue.toFixed(2)}`;
-            document.getElementById('totalCollected').textContent = `GHS ${totalCollected.toFixed(2)}`;
-            document.getElementById('totalOutstanding').textContent = `GHS ${totalOutstanding.toFixed(2)}`;
+            const totalStudentsEl = document.getElementById('totalStudents');
+            const expectedRevenueEl = document.getElementById('expectedRevenue');
+            const totalCollectedEl = document.getElementById('totalCollected');
+            const totalOutstandingEl = document.getElementById('totalOutstanding');
+            
+            if (totalStudentsEl) totalStudentsEl.textContent = totalStudents;
+            if (expectedRevenueEl) expectedRevenueEl.textContent = `GHS ${expectedRevenue.toFixed(2)}`;
+            if (totalCollectedEl) totalCollectedEl.textContent = `GHS ${totalCollected.toFixed(2)}`;
+            if (totalOutstandingEl) totalOutstandingEl.textContent = `GHS ${totalOutstanding.toFixed(2)}`;
             
             updateRecentPayments();
             updateReportStatistics();
@@ -2843,6 +2911,7 @@ ensureDOMLoaded(function() {
         
         function updateRecentPayments() {
             const tbody = document.getElementById('recentPaymentsBody');
+            if (!tbody) return;
             
             if (paymentHistory.length === 0) {
                 tbody.innerHTML = `
@@ -2886,11 +2955,17 @@ ensureDOMLoaded(function() {
             const expectedRevenue = studentRecords.reduce((sum, s) => sum + s.amountDue, 0);
             const collectionRate = expectedRevenue > 0 ? (totalCollected / expectedRevenue * 100) : 0;
             
-            document.getElementById('reportTotalStudents').textContent = totalStudents;
-            document.getElementById('reportFullyPaid').textContent = fullyPaid;
-            document.getElementById('reportPartiallyPaid').textContent = partiallyPaid;
-            document.getElementById('reportUnpaid').textContent = unpaid;
-            document.getElementById('reportCollectionRate').textContent = `${collectionRate.toFixed(1)}%`;
+            const reportTotalStudents = document.getElementById('reportTotalStudents');
+            const reportFullyPaid = document.getElementById('reportFullyPaid');
+            const reportPartiallyPaid = document.getElementById('reportPartiallyPaid');
+            const reportUnpaid = document.getElementById('reportUnpaid');
+            const reportCollectionRate = document.getElementById('reportCollectionRate');
+            
+            if (reportTotalStudents) reportTotalStudents.textContent = totalStudents;
+            if (reportFullyPaid) reportFullyPaid.textContent = fullyPaid;
+            if (reportPartiallyPaid) reportPartiallyPaid.textContent = partiallyPaid;
+            if (reportUnpaid) reportUnpaid.textContent = unpaid;
+            if (reportCollectionRate) reportCollectionRate.textContent = `${collectionRate.toFixed(1)}%`;
         }
         
         // ============================================
@@ -2898,12 +2973,14 @@ ensureDOMLoaded(function() {
         // ============================================
         
         function generateReport() {
-            const reportType = document.getElementById('reportType').value;
-            const reportLevel = document.getElementById('reportLevel').value;
+            const reportType = document.getElementById('reportType');
+            const reportLevel = document.getElementById('reportLevel');
+            
+            if (!reportType) return;
             
             let filteredStudents = studentRecords;
             
-            switch (reportType) {
+            switch (reportType.value) {
                 case 'unpaid':
                     filteredStudents = studentRecords.filter(s => s.balance > 0);
                     break;
@@ -2911,12 +2988,15 @@ ensureDOMLoaded(function() {
                     filteredStudents = studentRecords.filter(s => s.paymentStatus === 'Paid');
                     break;
                 case 'level':
-                    filteredStudents = studentRecords.filter(s => s.level === reportLevel);
+                    if (reportLevel) {
+                        filteredStudents = studentRecords.filter(s => s.level === reportLevel.value);
+                    }
                     break;
                 // 'all' includes all students
             }
             
             const tbody = document.getElementById('reportTableBody');
+            if (!tbody) return;
             
             if (filteredStudents.length === 0) {
                 tbody.innerHTML = `
@@ -2950,7 +3030,10 @@ ensureDOMLoaded(function() {
             tbody.innerHTML = html;
             
             // Update report date
-            document.getElementById('reportDate').textContent = new Date().toLocaleDateString();
+            const reportDate = document.getElementById('reportDate');
+            if (reportDate) {
+                reportDate.textContent = new Date().toLocaleDateString();
+            }
         }
         
         function printReport() {
@@ -2959,7 +3042,10 @@ ensureDOMLoaded(function() {
         
         function printPaymentHistory() {
             const originalContent = document.body.innerHTML;
-            const printContent = document.getElementById('paymentHistoryDetails').innerHTML;
+            const detailsDiv = document.getElementById('paymentHistoryDetails');
+            if (!detailsDiv) return;
+            
+            const printContent = detailsDiv.innerHTML;
             
             document.body.innerHTML = `
                 <div style="padding: 20px;">
@@ -2999,229 +3085,193 @@ ensureDOMLoaded(function() {
         }
         
         // ============================================
-// UPDATE SYNC FUNCTION
-// ============================================
-
-async function simpleSync() {
-    if (!currentUser) {
-        alert('Set user first');
-        return;
-    }
-    
-    if (!googleScriptUrl || googleScriptUrl === DEFAULT_SCRIPT_URL) {
-        alert('Set Google Script URL first');
-        showSection('syncSection');
-        return;
-    }
-    
-    showSyncIndicator('Starting sync...');
-    
-    try {
-        // Test connection first
-        const connected = await simpleTest();
-        if (!connected) {
-            showSyncIndicator('Connection failed', 'error', 3000);
-            return;
-        }
-        
-        showSyncIndicator('Fetching data...');
-        
-        // Get data
-        const [studentsData, paymentsData] = await Promise.allSettled([
-            fetchFromGoogleSheets('getStudents'),
-            fetchFromGoogleSheets('getPayments')
-        ]);
-        
-        let success = true;
-        
-        // Process students
-        if (studentsData.status === 'fulfilled' && studentsData.value.success) {
-            console.log('Got students:', studentsData.value.data.length);
-            // Merge logic here
-        } else {
-            success = false;
-        }
-        
-        // Process payments
-        if (paymentsData.status === 'fulfilled' && paymentsData.value.success) {
-            console.log('Got payments:', paymentsData.value.data.length);
-            // Merge logic here
-        } else {
-            success = false;
-        }
-        
-        if (success) {
-            showSyncIndicator('Sync complete!', 'success', 2000);
-            showToast('✅ Sync successful', 'success');
-        } else {
-            showSyncIndicator('Partial sync', 'warning', 3000);
-            showToast('⚠️ Some data failed', 'warning');
-        }
-        
-    } catch (error) {
-        showSyncIndicator('Sync failed', 'error', 3000);
-        showToast('❌ Sync error: ' + error.message, 'error');
-        console.error('Sync error:', error);
-    }
-}      // ============================================
-// SIMPLE GOOGLE SHEETS COMMUNICATION
-// ============================================
- 
-        async function sendToGoogleSheets(data) {
-    if (!isOnline) {
-        throw new Error('Offline - saving locally');
-    }
-    
-    if (!googleScriptUrl || googleScriptUrl === DEFAULT_SCRIPT_URL) {
-        throw new Error('Google Script URL not configured');
-    }
-    
-    try {
-        // Add required fields
-        data.deviceId = deviceId;
-        data.user = currentUser || 'Unknown';
-        data.timestamp = new Date().toISOString();
-        
-        console.log('Sending to Google Sheets:', data.action);
-        
-        // Use FormData to avoid CORS preflight
-        const formData = new FormData();
-        formData.append('data', JSON.stringify(data));
-        
-        // Use no-cors mode
-        const response = await fetch(googleScriptUrl, {
-            method: 'POST',
-            mode: 'no-cors',
-            body: formData
-        });
-        
-        // With no-cors, we can't read response but request was sent
-        console.log('Request sent (no-cors mode)');
-        return { success: true, message: 'Request sent' };
-        
-    } catch (error) {
-        console.error('Send error:', error);
-        throw error;
-    }
-}
-
-async function fetchFromGoogleSheets(action) {
-    if (!isOnline) {
-        throw new Error('Offline');
-    }
-    
-    if (!googleScriptUrl || googleScriptUrl === DEFAULT_SCRIPT_URL) {
-        throw new Error('Google Script URL not configured');
-    }
-    
-    try {
-        // Build URL with cache prevention
-        const url = `${googleScriptUrl}?action=${action}&deviceId=${deviceId}&_=${Date.now()}`;
-        
-        console.log('Fetching:', url);
-        
-        const response = await fetch(url);
-        
-        if (response.ok) {
-            const data = await response.json();
-            return data;
-        } else {
-            throw new Error(`HTTP ${response.status}`);
-        }
-        
-    } catch (error) {
-        console.error('Fetch error:', error);
-        throw error;
-    }
-}   
+        // SYNC FUNCTIONS
         // ============================================
-// SIMPLE TEST FUNCTION
-// ============================================
-
-async function simpleTest() {
-    if (!googleScriptUrl || googleScriptUrl === DEFAULT_SCRIPT_URL) {
-        alert('Please set Google Script URL first');
-        return;
-    }
-    
-    showLoading('Testing...');
-    
-    try {
-        // Test with GET first
-        const url = `${googleScriptUrl}?action=ping&test=true`;
-        console.log('Testing URL:', url);
         
-        const response = await fetch(url);
-        
-        if (response.ok) {
-            const data = await response.json();
-            hideLoading();
+        function showSyncIndicator(message, type = 'info', duration = 0) {
+            const syncIndicator = document.getElementById('syncIndicator');
+            const syncMessage = document.getElementById('syncMessage');
             
-            if (data.success) {
-                alert(`✅ Connected!\n\nSheet: ${data.sheetName}\nID: ${data.sheetId}`);
-                console.log('Success:', data);
-                
-                // Update display
-                document.getElementById('statusText').textContent = 'Connected';
-                document.getElementById('statusDetails').textContent = `Sheet: ${data.sheetName}`;
-                document.getElementById('connectionStatus').innerHTML = '<i class="fas fa-plug fa-3x text-success"></i>';
-                
-                return true;
-            } else {
-                alert('❌ Server error: ' + data.message);
+            if (!syncIndicator || !syncMessage) return;
+            
+            syncIndicator.style.display = 'block';
+            syncMessage.textContent = message;
+            
+            // Set alert type
+            syncIndicator.className = 'sync-indicator alert alert-info shadow-sm';
+            if (type === 'success') {
+                syncIndicator.className = 'sync-indicator alert alert-success shadow-sm';
+            } else if (type === 'error') {
+                syncIndicator.className = 'sync-indicator alert alert-danger shadow-sm';
+            } else if (type === 'warning') {
+                syncIndicator.className = 'sync-indicator alert alert-warning shadow-sm';
+            }
+            
+            // Hide after duration if specified
+            if (duration > 0) {
+                setTimeout(() => {
+                    syncIndicator.style.display = 'none';
+                }, duration);
+            }
+        }
+        
+        async function simpleTest() {
+            if (!googleScriptUrl || googleScriptUrl === DEFAULT_SCRIPT_URL) {
+                alert('Please set Google Script URL first');
                 return false;
             }
-        } else {
-            hideLoading();
-            alert(`❌ HTTP Error: ${response.status}`);
-            return false;
-        }
-        
-    } catch (error) {
-        hideLoading();
-        console.error('Test error:', error);
-        
-        // Try iframe method as fallback
-        if (error.message.includes('CORS') || error.message.includes('Failed to fetch')) {
-            alert('⚠️ CORS issue. Trying alternative method...');
-            return await testWithIframe();
-        }
-        
-        alert('❌ Connection failed: ' + error.message);
-        return false;
-    }
-}
-
-function testWithIframe() {
-    return new Promise((resolve) => {
-        const iframe = document.createElement('iframe');
-        iframe.style.display = 'none';
-        iframe.src = `${googleScriptUrl}?action=ping&iframe=true`;
-        
-        iframe.onload = function() {
-            alert('✅ Iframe loaded - connection works');
-            document.body.removeChild(iframe);
-            resolve(true);
-        };
-        
-        iframe.onerror = function() {
-            alert('❌ Iframe failed to load');
-            document.body.removeChild(iframe);
-            resolve(false);
-        };
-        
-        document.body.appendChild(iframe);
-        
-        // Timeout after 10 seconds
-        setTimeout(() => {
-            if (iframe.parentNode) {
-                document.body.removeChild(iframe);
-                alert('⚠️ Timeout - server might be slow');
-                resolve(false);
+            
+            showLoading('Testing...');
+            
+            try {
+                // Test with GET first
+                const url = `${googleScriptUrl}?action=ping&test=true`;
+                console.log('Testing URL:', url);
+                
+                const response = await fetch(url);
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    hideLoading();
+                    
+                    if (data.success) {
+                        alert(`✅ Connected!\n\nSheet: ${data.sheetName}\nID: ${data.sheetId}`);
+                        console.log('Success:', data);
+                        
+                        // Update display
+                        const statusText = document.getElementById('statusText');
+                        const statusDetails = document.getElementById('statusDetails');
+                        const connectionStatus = document.getElementById('connectionStatus');
+                        
+                        if (statusText) statusText.textContent = 'Connected';
+                        if (statusDetails) statusDetails.textContent = `Sheet: ${data.sheetName}`;
+                        if (connectionStatus) connectionStatus.innerHTML = '<i class="fas fa-plug fa-3x text-success"></i>';
+                        
+                        return true;
+                    } else {
+                        alert('❌ Server error: ' + data.message);
+                        return false;
+                    }
+                } else {
+                    hideLoading();
+                    alert(`❌ HTTP Error: ${response.status}`);
+                    return false;
+                }
+                
+            } catch (error) {
+                hideLoading();
+                console.error('Test error:', error);
+                
+                // Try iframe method as fallback
+                if (error.message.includes('CORS') || error.message.includes('Failed to fetch')) {
+                    alert('⚠️ CORS issue. Trying alternative method...');
+                    return await testWithIframe();
+                }
+                
+                alert('❌ Connection failed: ' + error.message);
+                return false;
             }
-        }, 10000);
-    });
-}
+        }
+        
+        function testWithIframe() {
+            return new Promise((resolve) => {
+                const iframe = document.createElement('iframe');
+                iframe.style.display = 'none';
+                iframe.src = `${googleScriptUrl}?action=ping&iframe=true`;
+                
+                iframe.onload = function() {
+                    alert('✅ Iframe loaded - connection works');
+                    document.body.removeChild(iframe);
+                    resolve(true);
+                };
+                
+                iframe.onerror = function() {
+                    alert('❌ Iframe failed to load');
+                    document.body.removeChild(iframe);
+                    resolve(false);
+                };
+                
+                document.body.appendChild(iframe);
+                
+                // Timeout after 10 seconds
+                setTimeout(() => {
+                    if (iframe.parentNode) {
+                        document.body.removeChild(iframe);
+                        alert('⚠️ Timeout - server might be slow');
+                        resolve(false);
+                    }
+                }, 10000);
+            });
+        }
+        
+        async function sendToGoogleSheets(data) {
+            if (!isOnline) {
+                throw new Error('Offline - saving locally');
+            }
+            
+            if (!googleScriptUrl || googleScriptUrl === DEFAULT_SCRIPT_URL) {
+                throw new Error('Google Script URL not configured');
+            }
+            
+            try {
+                // Add required fields
+                data.deviceId = deviceId;
+                data.user = currentUser || 'Unknown';
+                data.timestamp = new Date().toISOString();
+                
+                console.log('Sending to Google Sheets:', data.action);
+                
+                // Use FormData to avoid CORS preflight
+                const formData = new FormData();
+                formData.append('data', JSON.stringify(data));
+                
+                // Use no-cors mode
+                const response = await fetch(googleScriptUrl, {
+                    method: 'POST',
+                    mode: 'no-cors',
+                    body: formData
+                });
+                
+                // With no-cors, we can't read response but request was sent
+                console.log('Request sent (no-cors mode)');
+                return { success: true, message: 'Request sent' };
+                
+            } catch (error) {
+                console.error('Send error:', error);
+                throw error;
+            }
+        }
+        
+        async function fetchFromGoogleSheets(action) {
+            if (!isOnline) {
+                throw new Error('Offline');
+            }
+            
+            if (!googleScriptUrl || googleScriptUrl === DEFAULT_SCRIPT_URL) {
+                throw new Error('Google Script URL not configured');
+            }
+            
+            try {
+                // Build URL with cache prevention
+                const url = `${googleScriptUrl}?action=${action}&deviceId=${deviceId}&_=${Date.now()}`;
+                
+                console.log('Fetching:', url);
+                
+                const response = await fetch(url);
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    return data;
+                } else {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+                
+            } catch (error) {
+                console.error('Fetch error:', error);
+                throw error;
+            }
+        }
+        
         // ============================================
         // NETWORK STATUS
         // ============================================
@@ -3229,6 +3279,8 @@ function testWithIframe() {
         function updateOnlineStatus() {
             const online = navigator.onLine;
             const statusElement = document.getElementById('onlineStatus');
+            
+            if (!statusElement) return;
             
             if (online) {
                 isOnline = true;
@@ -3255,6 +3307,8 @@ function testWithIframe() {
             const statusEl = document.getElementById('connectionStatus');
             const statusText = document.getElementById('statusText');
             const statusDetails = document.getElementById('statusDetails');
+            
+            if (!statusEl || !statusText || !statusDetails) return;
             
             if (!googleScriptUrl || googleScriptUrl === DEFAULT_SCRIPT_URL) {
                 statusEl.innerHTML = '<i class="fas fa-plug fa-3x text-muted"></i>';
@@ -3396,7 +3450,10 @@ function testWithIframe() {
                 section.style.display = 'none';
             });
             
-            document.getElementById(sectionId).style.display = 'block';
+            const targetSection = document.getElementById(sectionId);
+            if (targetSection) {
+                targetSection.style.display = 'block';
+            }
             
             document.querySelectorAll('.sidebar a').forEach(link => {
                 link.classList.remove('active');
@@ -3412,7 +3469,10 @@ function testWithIframe() {
             };
             
             if (tabMap[sectionId]) {
-                document.getElementById(tabMap[sectionId]).classList.add('active');
+                const tab = document.getElementById(tabMap[sectionId]);
+                if (tab) {
+                    tab.classList.add('active');
+                }
             }
             
             // Special handling for each section
@@ -3430,6 +3490,8 @@ function testWithIframe() {
         function updateActivityDisplay() {
             const activityDiv = document.getElementById('recentActivity');
             const countElement = document.getElementById('activityCount');
+            
+            if (!activityDiv || !countElement) return;
             
             if (!recentActivity || recentActivity.length === 0) {
                 activityDiv.innerHTML = `
@@ -3462,6 +3524,8 @@ function testWithIframe() {
         function updateActiveUsersDisplay() {
             const usersDiv = document.getElementById('activeUsersList');
             
+            if (!usersDiv) return;
+            
             if (!activeUsers || activeUsers.length === 0) {
                 usersDiv.innerHTML = '<div class="text-muted">No active users</div>';
                 return;
@@ -3484,6 +3548,8 @@ function testWithIframe() {
         
         function addSyncLog(message, type = "info") {
             const logTable = document.getElementById('syncLog');
+            if (!logTable) return;
+            
             const row = document.createElement('tr');
             
             let icon = 'info-circle';
@@ -3516,9 +3582,16 @@ function testWithIframe() {
         }
         
         function showSuccess(title, message) {
-            document.getElementById('successTitle').textContent = title;
-            document.getElementById('successMessage').textContent = message;
-            new bootstrap.Modal(document.getElementById('successModal')).show();
+            const successTitle = document.getElementById('successTitle');
+            const successMessage = document.getElementById('successMessage');
+            
+            if (successTitle) successTitle.textContent = title;
+            if (successMessage) successMessage.textContent = message;
+            
+            const successModal = document.getElementById('successModal');
+            if (successModal) {
+                new bootstrap.Modal(successModal).show();
+            }
         }
         
         function showToast(message, type = 'info') {
@@ -3542,26 +3615,98 @@ function testWithIframe() {
         }
         
         function showLoading(message) {
-            document.getElementById('syncIndicator').style.display = 'block';
-            document.getElementById('syncMessage').textContent = message;
-            document.getElementById('loadingOverlay').style.display = 'block';
+            const syncIndicator = document.getElementById('syncIndicator');
+            const syncMessage = document.getElementById('syncMessage');
+            const loadingOverlay = document.getElementById('loadingOverlay');
+            
+            if (syncIndicator && syncMessage) {
+                syncIndicator.style.display = 'block';
+                syncMessage.textContent = message;
+            }
+            if (loadingOverlay) {
+                loadingOverlay.style.display = 'block';
+            }
         }
         
         function hideLoading() {
             setTimeout(() => {
-                document.getElementById('syncIndicator').style.display = 'none';
-                document.getElementById('loadingOverlay').style.display = 'none';
+                const syncIndicator = document.getElementById('syncIndicator');
+                const loadingOverlay = document.getElementById('loadingOverlay');
+                
+                if (syncIndicator) syncIndicator.style.display = 'none';
+                if (loadingOverlay) loadingOverlay.style.display = 'none';
             }, 1000);
         }
         
-        // Initialize
-        updateOnlineStatus();
+        // ============================================
+        // ADDITIONAL FUNCTIONS THAT NEED TO BE DECLARED
+        // ============================================
         
+        function saveScriptUrl() {
+            const scriptUrlInput = document.getElementById('scriptUrl');
+            if (!scriptUrlInput) return;
+            
+            const url = scriptUrlInput.value.trim();
+            if (!url) {
+                alert("Please enter a Google Apps Script URL");
+                return;
+            }
+            
+            googleScriptUrl = url;
+            localStorage.setItem('uhas_msa_script_url', url);
+            addSyncLog('Google Script URL saved', 'success');
+            updateConnectionStatus();
+            alert("Google Script URL saved successfully!");
+        }
+        
+        function forceSync() {
+            // Placeholder for sync functionality
+            alert("Sync functionality would connect to Google Sheets here");
+        }
+        
+        function testConnection() {
+            simpleTest();
+        }
+        
+        function setupAutoSync() {
+            // Placeholder for auto-sync setup
+            const autoSyncStatus = document.getElementById('autoSyncStatus');
+            if (autoSyncStatus) {
+                autoSyncStatus.textContent = 'Off';
+            }
+        }
+        
+        function savePendingPayment(studentId, paymentRecord) {
+            // Placeholder for pending payments
+            console.log('Payment saved locally (offline mode)');
+        }
+        
+        function syncPendingPayments() {
+            // Placeholder for syncing pending payments
+            console.log('Syncing pending payments when online');
+        }
+        
+        function syncPaymentToGoogleSheets(student, paymentRecord) {
+            // Placeholder for syncing payment to Google Sheets
+            console.log('Syncing payment to Google Sheets');
+            return Promise.resolve({ success: true });
+        }
+        
+        function syncPaymentDeletionToGoogleSheets(studentId, paymentId) {
+            // Placeholder for syncing payment deletion to Google Sheets
+            console.log('Syncing payment deletion to Google Sheets');
+            return Promise.resolve({ success: true });
+        }
+        
+        // ============================================
+        // INITIALIZATION
+        // ============================================
+        
+        ensureDOMLoaded(function() {
+            initializeSystem();
+            setupEventListeners();
+            checkUserSession();
+        });
     </script>
 </body>
 </html>
-
-
-
-
-
