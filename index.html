@@ -1208,6 +1208,82 @@ function ensureDOMLoaded(callback) {
     }
 }
 
+        function fullSystemTest() {
+    if (!currentUser) {
+        alert('Please set user first');
+        return;
+    }
+    
+    if (!googleScriptUrl || googleScriptUrl === DEFAULT_SCRIPT_URL) {
+        alert('Please configure Google Script URL first');
+        return;
+    }
+    
+    showLoading('Testing complete system...');
+    
+    // Step 1: Test connection
+    fetch(`${googleScriptUrl}?action=ping&deviceId=${deviceId}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                console.log('✅ Connection test passed:', data);
+                
+                // Step 2: Record a test payment
+                const testPayment = {
+                    action: 'recordPayment',
+                    studentId: 'UHAS202500001',
+                    studentName: 'Test Student',
+                    level: '100',
+                    amount: 100,
+                    method: 'Cash',
+                    recordedBy: currentUser,
+                    deviceId: deviceId,
+                    timestamp: new Date().toISOString()
+                };
+                
+                return fetch(googleScriptUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(testPayment)
+                });
+            } else {
+                throw new Error('Connection failed: ' + data.message);
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                console.log('✅ Payment test passed:', data);
+                
+                // Step 3: Get payments to verify
+                return fetch(`${googleScriptUrl}?action=getPayments&deviceId=${deviceId}`);
+            } else {
+                throw new Error('Payment failed: ' + data.message);
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            hideLoading();
+            if (data.success) {
+                alert(`✅ All tests passed!\n\nConnection: OK\nPayment recorded: OK\nTotal payments in system: ${data.count}\n\nCheck Google Sheets to see the new payment.`);
+                console.log('Final payments data:', data);
+            } else {
+                alert('❌ Final verification failed: ' + data.message);
+            }
+        })
+        .catch(error => {
+            hideLoading();
+            alert('❌ System test failed: ' + error.message);
+            console.error('Test error:', error);
+        });
+}
+
+// Add this to your sync section HTML:
+// <button class="btn btn-outline-warning" onclick="fullSystemTest()">
+//     <i class="fas fa-vial me-2"></i> Full System Test
+// </button>
 // Wrap your initialization in this
 ensureDOMLoaded(function() {
     initializeSystem();
@@ -1909,7 +1985,7 @@ ensureDOMLoaded(function() {
         // SYSTEM CONFIGURATION
         // ============================================
         
-        const DEFAULT_SCRIPT_URL = "https://script.google.com/macros/s/YOUR_SCRIPT_ID/exec";
+        const DEFAULT_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbw88jD43O3wsaZmrC_nBA15nIvMx4LfiuKHnpIWWTvAjingitpxS2lU8ojFKgrVx2DKag/exec";
         
         // System variables
         let studentRecords = [];
@@ -4028,5 +4104,6 @@ function updateConnectionStatus(connected, status, details) {
     </script>
 </body>
 </html>
+
 
 
